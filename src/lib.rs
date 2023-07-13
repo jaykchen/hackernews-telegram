@@ -12,24 +12,25 @@ use tokio::time::sleep;
 #[tokio::main(flavor = "current_thread")]
 pub async fn run() -> anyhow::Result<()> {
     logger::init();
-    let telegram_token = std::env::var("telegram_token").unwrap();
+    let telegram_token = std::env::var("telegram_token").expect("Missing telegram_token");
     let placeholder_text = std::env::var("placeholder").unwrap_or("Typing ...".to_string());
     let help_mesg = std::env::var("help_mesg").unwrap_or("You can enter text or upload an image with text to chat with this bot. The bot can take several different assistant roles. Type command /qa or /translate or /summarize or /code or /reply_tweet to start.".to_string());
 
-    let tg_token_clone = telegram_token.clone();
 
     let mut chat_id = 0;
-    match get_chat_id(tg_token_clone, "username".to_string()) {
+    match get_chat_id(telegram_token.clone(), "username".to_string()) {
         Ok(id) => chat_id = id,
         Err(_e) => log::debug!("Unable to retrieve chat_id {:}?", _e.to_string(),),
     }
     // Spawn a new task to run every hour
+    
+    let tg_token_clone = telegram_token.clone();
     tokio::spawn(async move {
         loop {
             // Assume that get_news_updates() returns a vector of updates as strings.
             let news_updates = get_news_updates().await;
 
-            send_news_update(telegram_token.clone(), chat_id, &news_updates).await;
+            send_news_update(tg_token_clone.clone(), chat_id, &news_updates).await;
 
             // Sleep for an hour
             tokio::time::sleep(std::time::Duration::from_secs(60 * 60)).await;
@@ -37,7 +38,7 @@ pub async fn run() -> anyhow::Result<()> {
     })
     .await;
 
-    listen_to_update(&telegram_token, |_| async {}).await;
+    listen_to_update(&telegram_token.clone(), |_| async {}).await;
 
     Ok(())
 }
